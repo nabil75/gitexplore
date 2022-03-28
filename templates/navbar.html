@@ -1,0 +1,80 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+<nav class="navbar navbar-expand-lg navbar-light bg-light">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="{% url 'index' %}"><img src="{% static 'images/robot.png' %}" width="50px" height="50px"/></a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNavDropdown"
+                aria-controls="navbarNavDropdown" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNavDropdown">
+            <ul class="navbar-nav">
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownMenuLink" role="button"
+                       data-bs-toggle="dropdown" aria-expanded="false">
+                        Collecter
+                    </a>
+                    <ul class="dropdown-menu" aria-labelledby="navbarDropdownMenuLink">
+                        <li><a class="dropdown-item" href="{% url 'telecharger_csv' %}">Télécharger un fichier CSV</a></li>
+                        <li><a class="dropdown-item" href="{% url 'telecharger_pdf' %}">Télécharger un fichier PDF</a></li>
+                        <li><a class="dropdown-item" href="#">Télécharger un fichier XML</a></li>
+                    </ul>
+                </li>
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownMenuLink" role="button"
+                       data-bs-toggle="dropdown" aria-expanded="false">
+                        Préparer
+                    </a>
+                    <ul class="dropdown-menu" aria-labelledby="navbarDropdownMenuLink">
+                        <li><a class="dropdown-item" href="{% url 'preparer' %}">Supprimer des colonnes</a></li>
+                        <li><a class="dropdown-item" href="#">Supprimer des lignes</a></li>
+                        <li><a class="dropdown-item" href="#">Supprimer les valeurs aberrantes</a></li>
+                        <li><a class="dropdown-item" href="#">Remplacer des valeurs</a></li>
+                    </ul>
+                </li>
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownMenuLink" role="button"
+                       data-bs-toggle="dropdown" aria-expanded="false">
+                        Explorer
+                    </a>
+                    <ul class="dropdown-menu" aria-labelledby="navbarDropdownMenuLink">
+                        <li><a class="dropdown-item" href="{% url 'explorer' %}">Composition nutritionnelle d'un aliment</a></li>
+                        <li><a class="dropdown-item" href="#">Recherche par élément nutritif</a></li>
+                        <li><a class="dropdown-item" href="#">Recherche par score nutritionnel</a></li>
+                    </ul>
+                </li>
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownMenuLink" role="button"
+                       data-bs-toggle="dropdown" aria-expanded="false">
+                        Visualiser
+                    </a>
+                    <ul class="dropdown-menu" aria-labelledby="navbarDropdownMenuLink">
+                        <li><a class="dropdown-item" href="#">lineplot</a></li>
+                        <li><a class="dropdown-item" href="#">histplot</a></li>
+                        <li><a class="dropdown-item" href="#">catplot</a></li>
+                    </ul>
+                </li>
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownMenuLink" role="button"
+                       data-bs-toggle="dropdown" aria-expanded="false">
+                        liens utiles
+                    </a>
+                    <ul class="dropdown-menu" aria-labelledby="navbarDropdownMenuLink">
+                        <li><a class="dropdown-item" href="https://pandas.pydata.org/docs/index.html" target="_blank">pandas</a></li>
+                        <li><a class="dropdown-item" href="https://numpy.org/doc/stable/" target="_blank">numpy</a></li>
+                        <li><a class="dropdown-item" href="https://seaborn.pydata.org/tutorial.html" target="_blank">seaborn tutoriel</a></li>
+                    </ul>
+                </li>
+            </ul>
+        </div>
+    </div>
+</nav>
+</body>
+</html>
+

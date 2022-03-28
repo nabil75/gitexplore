@@ -1,0 +1,181 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Résultat</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet"
+          integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"
+            integrity="sha384-ka7Sk0Gln4gmtz2MlQnikT1wXgYsOg+OMhuP+IlRH9sENBO0LRn5q+8nbTov4+1p"
+            crossorigin="anonymous"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="{%  static 'js/spinner.js' %}"></script>
+
+    <style>
+        .twocolumns {
+            padding: 10px;
+            width: 100%;
+            -moz-column-count: 5;
+            -moz-column-gap: 10px;
+            -webkit-column-count: 5;
+            -webkit-column-gap: 10px;
+            column-count: 5;
+            column-gap: 10px;
+            padding: 2%;
+        }
+    </style>
+</head>
+<body>
+<header>
+    {% include 'navbar.html' %}
+</header>
+<main class="container">
+    <div class="bg-light p-5 rounded">
+        {% include 'spinner.html' %}
+        <div>
+            <label for="file" class="form-label" style="font-size: x-large; font-weight: bold">Sélectionner un fichier </label>
+            <input class="form-control" list="listFiles" id="file" placeholder="Saisissez tout ou partie du nom ">
+            <datalist id="listFiles">
+                {% for file in list_files %}
+                    <option value="{{ file }}" style="color: royalblue">{{ file }}</option>
+                {% endfor %}
+            </datalist>
+        </div>
+        <br>
+        <div id="listMostCle" class="d-none">
+            <label for="foodsDataList" class="form-label" style="font-size: x-large; font-weight: bold">Rechercher un produit </label>
+            <input class="form-control" list="datalistOptions" id="foodsDataList" placeholder="Saisissez un mot clé">
+            <datalist id="datalistOptions">
+                {% for mot in mots_cle %}
+                    <option value="{{ mot }}">{{ mot }}</option>
+                {% endfor %}
+            </datalist>
+        </div>
+        <div class="twocolumns" id="listProduits"></div>
+    </div>
+    <br>
+    <div class="d-flex justify-content-between">
+        <div class="p-2 bd-highlight">
+            <h5 id="produitChoisi" style="color: brown"></h5>
+            <div id="infoProduit"></div>
+        </div>
+        <div class="p-2 bd-highlight">
+            <h5 id="categorie_produit" style="color: brown"></h5>
+            <div id="infoProduit1"></div>
+        </div>
+        <div class="p-2 bd-highlight">
+            <h5 id="tous_produit" style="color: brown"></h5>
+            <div id="infoProduit2"></div>
+        </div>
+    </div>
+</main>
+
+<script>
+    $(document).ready(function() {
+
+    });
+
+    $('#file').on('change', function () {
+
+        showSpinner();
+        $.ajax({
+            url: '{% url 'get_list_mots_cle' %}',
+            method: 'get',
+            data: {
+                file: $('#file').val()
+            },
+            success: function (response) {
+                $("#listFiles").empty();
+                var data = []
+                var elemResponse = response.split(',')
+                for (var m = 0; m < elemResponse.length; m++) {
+                    var elem = elemResponse[m];
+                    elem = elem.replace("'", '').replace("'", '').replace("[", '').replace("]", '').replace("\"", '');
+                    data.push(elem);
+                }
+                var unique = data.filter((v, i, a) => a.indexOf(v) === i);
+                var unique = unique.sort();
+                var datalist = document.getElementById('datalistOptions');
+                var len = unique.length
+                for (var i = 0; i < len; i++) {
+                    var option = document.createElement("option");
+                    var textOption = document.createTextNode(unique[i]);
+                    option.appendChild(textOption);
+                    datalist.appendChild(option);
+                }
+                $('#listMostCle').attr('class', 'd-block');
+                hideSpinner();
+            }
+        });
+    });
+    $('#foodsDataList').on('change', function () {
+        showSpinner();
+        $.ajax({
+            url: '{% url 'get_list_product' %}',
+            method: 'get',
+            data: {
+                produit: $('#foodsDataList').val(),
+                file: $('#file').val()
+            },
+            success: function (response) {
+                var data = []
+                var elemResponse = response.split(',')
+                for (var m = 0; m < elemResponse.length; m++) {
+                    var elem = elemResponse[m];
+                    elem = elem.replace("'", '').replace("'", '').replace("[", '').replace("]", '').replace("\"", '');
+                    data.push(elem);
+                }
+                var unique = data.filter((v, i, a) => a.indexOf(v) === i);
+                $('#listProduits').html('');
+                var div = document.getElementById('listProduits');
+                var ul = document.createElement("ul");
+                var len = unique.length
+                for (var i = 0; i < len; i++) {
+                    var li = document.createElement("li");
+                    li.setAttribute('class', 'produit')
+                    var a = document.createElement("a")
+                    a.setAttribute('id', 'product_' + i)
+                    a.setAttribute('href', '#');
+                    a.setAttribute('onclick', 'clickOnProduct(this.id)')
+                    var textLi = document.createTextNode(unique[i]);
+                    a.appendChild(textLi);
+                    li.appendChild(a)
+                    ul.appendChild(li);
+                }
+                div.appendChild(ul);
+                hideSpinner();
+            }
+        });
+    });
+
+    function clickOnProduct(id) {
+        var product_name = $('#' + id).text().trim();
+        $('#produitChoisi').html(product_name);
+        $('#categorie_produit').html('Produits à scrore nutritionnel équivalent');
+        $('#tous_produit').html('Tous les produits');
+        $.ajax({
+            url: '{% url 'get_info_product' %}',
+            method: 'get',
+            data: {
+                produit: product_name,
+                file: $('#file').val()
+            },
+            success: function (response) {
+                var div = document.getElementById('infoProduit');
+                var rep1 = response.produit
+                div.innerHTML = rep1
+                var rep2 = response.categorie
+                var div = document.getElementById('infoProduit1');
+                div.innerHTML = rep2
+                var rep3 = response.tous
+                var div = document.getElementById('infoProduit2');
+                div.innerHTML = rep3
+            }
+        });
+    }
+
+</script>
+</body>
+</html>

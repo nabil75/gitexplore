@@ -1,0 +1,172 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Préparer votre jeu de données</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet"
+          integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"
+            integrity="sha384-ka7Sk0Gln4gmtz2MlQnikT1wXgYsOg+OMhuP+IlRH9sENBO0LRn5q+8nbTov4+1p"
+            crossorigin="anonymous"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.2.0/dist/select2-bootstrap-5-theme.min.css" />
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script src="{%  static 'js/spinner.js' %}"></script>
+
+    <style>
+        td{
+            float: right;
+            padding: 5px;
+        }
+        .btn-actions{
+            width: 8em;
+        }
+    </style>
+</head>
+
+<body>
+<header>
+    {% include 'navbar.html' %}
+</header>
+<main class="container">
+    <div class="bg-light p-5 rounded">
+        {% include 'spinner.html' %}
+        <label for="file" class="form-label" style="font-size: x-large; font-weight: bold">Sélectionner un fichier </label>
+        <input class="form-control" list="listFiles" id="file" placeholder="Saisissez tout ou partie du nom ">
+        <datalist id="listFiles">
+            {% for file in list_files %}
+                <option value="{{ file }}" style="color: royalblue">{{ file }}</option>
+            {% endfor %}
+        </datalist>
+
+        <br>
+
+        <div id="selectColonnes" class="d-none">
+            <label class="form-label" style="font-size: x-large; font-weight: bold">Selectionner une colonne (variable)</label>
+            <select class="form-select" id="single-select-column" data-placeholder="Choisir une colonne">
+
+            </select>
+            <br>
+            <button class="btn btn-primary btn-actions" id="afficherValuesColonne" style="float: right; margin-left: 10px">Valeurs</button>
+            <button class="btn btn-primary btn-actions" id="afficherResumeColonne" style="float: right; margin-left: 10px">Statistiques</button>
+            <button class="btn btn-primary btn-actions" id="supprimerColonne" style="float: right;  margin-left: 10px">Supprimer</button>
+        </div>
+        <div id="dataColonne" class="row" style="margin-top: 50px">
+            <div id="resumeColonne" class="col-sm-2"></div>
+            <div class="col-sm-10"><img id="chartColonne" src=""/></div>
+        </div>
+
+        <textarea id="contentColonne" class="col-lg-12 d-none" style="width: 100%"></textarea>
+
+        <h4 id="message"></h4>
+
+    </div>
+</main>
+
+<script>
+    $(document).ready(function() {
+        $( '#single-select-column' ).select2( {
+            theme: "bootstrap-5",
+            width: $( this ).data( 'width' ) ? $( this ).data( 'width' ) : $( this ).hasClass( 'w-100' ) ? '100%' : 'style',
+            placeholder: $( this ).data( 'placeholder' ),
+            closeOnSelect: true,
+        });
+    });
+
+    $('#file').on('change', function () {
+
+        showSpinner();
+        $.ajax({
+            url: '{% url 'get_list_colonnes' %}',
+            method: 'get',
+            data: {
+                file: $('#file').val()
+            },
+            success: function (response) {
+                afficherListColonnes(response)
+                hideSpinner();
+            }
+        });
+    });
+
+    $('#afficherResumeColonne').on('click', function () {
+        //showSpinner();
+        $.ajax({
+            url: '{% url 'get_value_counts' %}',
+            method: 'get',
+            data: {
+                file: $('#file').val(),
+                colonne: $('#single-select-column').val()
+            },
+            success: function (response) {
+                var opened = window.open("");
+                opened.document.write(response.value_counts);
+                hideSpinner();
+            }
+        });
+    });
+
+    $('#afficherValuesColonne').on('click', function () {
+    showSpinner();
+        $.ajax({
+            url: '{% url 'get_values_colonne' %}',
+            method: 'get',
+            data: {
+                file: $('#file').val(),
+                colonne: $('#single-select-column').val()
+            },
+            success: function (response) {
+                $('#message').text('');
+                document.getElementById('resumeColonne').innerHTML = "";
+                $('#chartColonne').attr('src','');
+                $('#contentColonne').val((response.values_colonne).toString());
+                $('#contentColonne').attr('class','d-block')
+                hideSpinner();
+            }
+        });
+    });
+    $('#supprimerColonne').on('click', function () {
+        showSpinner();
+        $.ajax({
+            url: '{% url 'suppr_colonne' %}',
+            method: 'get',
+            data: {
+                file: $('#file').val(),
+                colonne: $('#single-select-column').val()
+            },
+            success: function (response) {
+                document.getElementById('single-select-column').innerHTML = "";
+                afficherListColonnes(response)
+                hideSpinner();
+            }
+        });
+    });
+
+    function afficherListColonnes(response){
+        var data = []
+        var elemResponse = response.split(',')
+        for (var m = 0; m < elemResponse.length; m++) {
+            var elem = elemResponse[m];
+            elem = elem.replace("'", '').replace("'", '').replace("[", '').replace("]", '').replace("\"", '');
+            data.push(elem);
+        }
+        var unique = data.filter((v, i, a) => a.indexOf(v) === i);
+        var unique = unique.sort();
+        var datalist = document.getElementById('single-select-column');
+        var len = unique.length
+        for (var i = 0; i < len; i++) {
+            var option = document.createElement("option");
+            var textOption = document.createTextNode(unique[i]);
+            option.appendChild(textOption);
+            datalist.appendChild(option);
+        }
+        $('#selectColonnes').attr('class', 'd-block');
+    }
+
+</script>
+</body>
+</html>
