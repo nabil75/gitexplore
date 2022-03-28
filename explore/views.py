@@ -1,5 +1,4 @@
 import os
-import numpy as np
 import requests
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render, redirect
