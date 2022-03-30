@@ -9,22 +9,30 @@ import json
 from elasticsearch import Elasticsearch, helpers
 from .utils import get_plot, list_files_dir, cleanfile, recup_mots_cle
 from pandas_profiling import ProfileReport
+import re
 
 
 def index (request):
     return render(request, 'index.html')
 
 def telecharger_csv(request):
-    #téléchargement du fichier de travail
+    """
+    1- upload working file (csv only)
+    2- storage of the file in the media directory
+    3- read the uploaded file (fileUploaded) and calculate the number of records and columns
+    Parameters
+    ----------
+    request
+    Returns
+    -------
+    message with numbers of rows and columns
+    """
+
     if request.method=='POST':
         uploaded_file=request.FILES['document']
-
-        #Vérifier le format du fichier seuls les fichiers de type CSV sont acceptés
         if uploaded_file.name.endswith('.csv'):
-            #sauvegarder le fichier téléchargé dans le répertoire media à la racine du projet
             name = FileSystemStorage().save(uploaded_file.name,uploaded_file)
             fileUploaded = 'media\\'+name
-            #lire le fichier téléchargé(fileUploaded) et calculer le nombre d'enregistrements et de colonnes
             my_file = pd.read_csv(fileUploaded, sep=';', engine='python', encoding='ansi')
             data = pd.DataFrame(data=my_file, index=None)
             rows = len(data.axes[0])
@@ -35,15 +43,20 @@ def telecharger_csv(request):
     return render(request, 'telecharger_csv.html')
 
 def telecharger_pdf(request):
-    #téléchargement du fichier de travail
+    """
+    1- upload working file (pdf only)
+    2- storage of the file in the media directory
+    Parameters
+    ----------
+    request
+    Returns
+    -------
+    message with numbers of rows and columns
+    """
     if request.method=='POST':
         uploaded_file=request.FILES['document']
-
-        #Vérifier le format du fichier seuls les fichiers de type CSV sont acceptés
         if uploaded_file.name.endswith('.pdf'):
-            #sauvegarder le fichier téléchargé dans le répertoire media à la racine du projet
             name = FileSystemStorage().save(uploaded_file.name,uploaded_file)
-            fileUploaded = 'media\\'+name
             messages.warning(request, 'Le fichier a été téléchargé avec succès.')
         else:
             messages.warning(request, 'Le fichier n\'a pas été téléchargé. Merci de choisir un fichier au format pdf')
@@ -51,6 +64,7 @@ def telecharger_pdf(request):
 
 def explorer(request):
     """
+    1- display explorer page
     :param request:
     :return:
     """
@@ -60,6 +74,17 @@ def explorer(request):
     return render(request, 'explorer.html', context)
 
 def get_list_mots_cle(request):
+    """
+    1- get list of key words from product_name column
+    Parameters:
+    chosen file
+    ----------
+    request
+    Returns
+    key words list
+    -------
+    message with numbers of rows and columns
+    """
     filename = 'media/'+request.GET.get('file')
     list_mots_cle = recup_mots_cle(filename)
     print(list_mots_cle)
@@ -150,7 +175,7 @@ def get_list_colonnes(request):
         colonnes.append(col_name)
     return HttpResponse(str(colonnes))
 
-def get_value_counts(request):
+def get_overview(request):
     context = {}
     file = request.GET.get('file')
     colonne = request.GET.get('colonne')
@@ -158,23 +183,23 @@ def get_value_counts(request):
     csv_file = pd.read_csv(filename, sep=';', engine='python', encoding='ansi')
     df = pd.DataFrame({'valeur': csv_file[colonne]})
 
-    profile = ProfileReport(df, title=colonne, html={'style': {'full_width': True}}, samples=None,correlations=None, missing_diagrams=None, interactions=None,)
+    profile = ProfileReport(df, title=colonne, html={'style': {'full_width': True}})
 
     #profile = Profile Report(df, minimal=True)
     rapport = profile.to_html()
-
-    type_colonne =csv_file[colonne].dtype
-    if(type_colonne!='object'):
-        #Resume
-        value_counts = pd.DataFrame({'valeur': csv_file[colonne].describe().transpose()})
-        # df_centered = df.apply(lambda x: (x-x.mean())/x.std())
-        context['value_counts'] = rapport #value_counts.to_html()
-        #Chart
-        chart = get_plot(df, colonne)
-        context['chart'] = chart
-    else:
-        message = "La colonne ne correspondant pas à une variable continue."
-        context['message'] = message
+    context['overview']=rapport
+    # type_colonne =csv_file[colonne].dtype
+    # if(type_colonne!='object'):
+    #     #Resume
+    #     value_counts = pd.DataFrame({'valeur': csv_file[colonne].describe().transpose()})
+    #     # df_centered = df.apply(lambda x: (x-x.mean())/x.std())
+    #     context['value_counts'] = rapport #value_counts.to_html()
+    #     #Chart
+    #     chart = get_plot(df, colonne)
+    #     context['chart'] = chart
+    # else:
+    #     message = "La colonne ne correspondant pas à une variable continue."
+    #     context['message'] = message
 
     return JsonResponse(context)
 
@@ -185,11 +210,18 @@ def get_values_colonne(request):
     filename = 'media/' + file
     csv_file = pd.read_csv(filename, sep=';', engine='python', encoding='ansi')
     df = pd.DataFrame({'valeur': csv_file[colonne]})
-    print(df)
     values = pd.unique(df['valeur'])
-    print(values)
-    context['values_colonne'] = str(values)
-    return JsonResponse(context)
+    values_all=[]
+    for val in values:
+        if (len(str(val))>0):
+            values_row = re.findall(r'\[.*?\]', str(val))
+            # values_row = [sub.replace('[', '') for sub in values_row]
+            # values_row = [sub.replace(']', '') for sub in values_row]
+            values_all.append(values_row)
+    json_str = json.dumps(values_all)
+    print(json_str)
+    #context['values_colonne'] = str(values_all)
+    return JsonResponse(json_str, safe=False)
 
 def suppr_colonne(request):
     context = {}

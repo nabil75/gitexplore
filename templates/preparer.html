@@ -94,21 +94,29 @@
     });
 
     $('#afficherResumeColonne').on('click', function () {
-        //showSpinner();
+        showSpinner();
         $.ajax({
-            url: '{% url 'get_value_counts' %}',
+            url: '{% url 'get_overview' %}',
             method: 'get',
             data: {
                 file: $('#file').val(),
                 colonne: $('#single-select-column').val()
             },
             success: function (response) {
-                var opened = window.open("");
-                opened.document.write(response.value_counts);
+                var opened = window.open($('#single-select-column').val(), "_blank");
+                opened.document.write(response.overview);
                 hideSpinner();
             }
         });
     });
+
+    function changeFavicon() {
+        var link = document.querySelector("link[rel*='icon']") || document.createElement('link');
+        link.type = 'image/x-icon';
+        link.rel = 'shortcut icon';
+        link.href = 'static/images/robot.png';
+        document.getElementsByTagName('head')[0].appendChild(link);
+    };
 
     $('#afficherValuesColonne').on('click', function () {
     showSpinner();
@@ -123,8 +131,22 @@
                 $('#message').text('');
                 document.getElementById('resumeColonne').innerHTML = "";
                 $('#chartColonne').attr('src','');
-                $('#contentColonne').val((response.values_colonne).toString());
+                //$('#contentColonne').val((response.values_colonne).toString());
                 $('#contentColonne').attr('class','d-block')
+                var data = response;
+                var obj = JSON.parse(data);
+                var nbValeurs = Object.keys(obj).length;
+                for (var i = 0; i < nbValeurs; i++) {
+                    var additives = []
+                    for (var j = 0; j < obj[i].length; j++) {
+                        var additive = obj[i][j];
+                        var idx = additive.indexOf("->");
+                        additive = additive.substr(0, idx);
+                        additives.push(additive.trim().replace("[",""));
+                    }
+                    console.log(additives)
+                }
+                $('#recherchesModal').modal('toggle');
                 hideSpinner();
             }
         });
