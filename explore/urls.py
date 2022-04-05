@@ -32,6 +32,5 @@ urlpatterns = [
     path('get_list_colonnes', views.get_list_colonnes, name='get_list_colonnes'),
     path('get_list_mots_cle', views.get_list_mots_cle, name='get_list_mots_cle'),
     path('get_overview', views.get_overview, name='get_overview'),
-    path('get_values_colonne', views.get_values_colonne, name='get_values_colonne'),
     path('suppr_colonne', views.suppr_colonne, name='suppr_colonne')
 ]

@@ -184,44 +184,9 @@ def get_overview(request):
     df = pd.DataFrame({'valeur': csv_file[colonne]})
 
     profile = ProfileReport(df, title=colonne, html={'style': {'full_width': True}})
-
-    #profile = Profile Report(df, minimal=True)
     rapport = profile.to_html()
     context['overview']=rapport
-    # type_colonne =csv_file[colonne].dtype
-    # if(type_colonne!='object'):
-    #     #Resume
-    #     value_counts = pd.DataFrame({'valeur': csv_file[colonne].describe().transpose()})
-    #     # df_centered = df.apply(lambda x: (x-x.mean())/x.std())
-    #     context['value_counts'] = rapport #value_counts.to_html()
-    #     #Chart
-    #     chart = get_plot(df, colonne)
-    #     context['chart'] = chart
-    # else:
-    #     message = "La colonne ne correspondant pas à une variable continue."
-    #     context['message'] = message
-
     return JsonResponse(context)
-
-def get_values_colonne(request):
-    context = {}
-    file = request.GET.get('file')
-    colonne = request.GET.get('colonne')
-    filename = 'media/' + file
-    csv_file = pd.read_csv(filename, sep=';', engine='python', encoding='ansi')
-    df = pd.DataFrame({'valeur': csv_file[colonne]})
-    values = pd.unique(df['valeur'])
-    values_all=[]
-    for val in values:
-        if (len(str(val))>0):
-            values_row = re.findall(r'\[.*?\]', str(val))
-            # values_row = [sub.replace('[', '') for sub in values_row]
-            # values_row = [sub.replace(']', '') for sub in values_row]
-            values_all.append(values_row)
-    json_str = json.dumps(values_all)
-    print(json_str)
-    #context['values_colonne'] = str(values_all)
-    return JsonResponse(json_str, safe=False)
 
 def suppr_colonne(request):
     context = {}
@@ -231,8 +196,7 @@ def suppr_colonne(request):
     csv_file = pd.read_csv(filename, sep=';', engine='python', encoding='ansi')
     csv_file.pop(colonne)
     os.remove(filename)
-    csv_file.to_csv(filename, sep=';', encoding='ansi', index=True)
-    #df = pd.read_csv(filename, sep=';', engine='python', encoding='ansi')
+    csv_file.to_csv(filename, sep=';', encoding='ansi', index=False)
     colonnes = []
     for col_name in csv_file.columns:
         colonnes.append(col_name)

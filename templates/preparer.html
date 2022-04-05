@@ -51,8 +51,7 @@
 
             </select>
             <br>
-            <button class="btn btn-primary btn-actions" id="afficherValuesColonne" style="float: right; margin-left: 10px">Valeurs</button>
-            <button class="btn btn-primary btn-actions" id="afficherResumeColonne" style="float: right; margin-left: 10px">Statistiques</button>
+            <button class="btn btn-primary btn-actions" id="afficherResumeColonne" style="float: right; margin-left: 10px">Vue générale</button>
             <button class="btn btn-primary btn-actions" id="supprimerColonne" style="float: right;  margin-left: 10px">Supprimer</button>
         </div>
         <div id="dataColonne" class="row" style="margin-top: 50px">
@@ -98,6 +97,7 @@
         $.ajax({
             url: '{% url 'get_overview' %}',
             method: 'get',
+            async: false,
             data: {
                 file: $('#file').val(),
                 colonne: $('#single-select-column').val()
@@ -105,6 +105,7 @@
             success: function (response) {
                 var opened = window.open($('#single-select-column').val(), "_blank");
                 opened.document.write(response.overview);
+                //setTimeout(function() {}, 1000);
                 hideSpinner();
             }
         });
@@ -118,39 +119,6 @@
         document.getElementsByTagName('head')[0].appendChild(link);
     };
 
-    $('#afficherValuesColonne').on('click', function () {
-    showSpinner();
-        $.ajax({
-            url: '{% url 'get_values_colonne' %}',
-            method: 'get',
-            data: {
-                file: $('#file').val(),
-                colonne: $('#single-select-column').val()
-            },
-            success: function (response) {
-                $('#message').text('');
-                document.getElementById('resumeColonne').innerHTML = "";
-                $('#chartColonne').attr('src','');
-                //$('#contentColonne').val((response.values_colonne).toString());
-                $('#contentColonne').attr('class','d-block')
-                var data = response;
-                var obj = JSON.parse(data);
-                var nbValeurs = Object.keys(obj).length;
-                for (var i = 0; i < nbValeurs; i++) {
-                    var additives = []
-                    for (var j = 0; j < obj[i].length; j++) {
-                        var additive = obj[i][j];
-                        var idx = additive.indexOf("->");
-                        additive = additive.substr(0, idx);
-                        additives.push(additive.trim().replace("[",""));
-                    }
-                    console.log(additives)
-                }
-                $('#recherchesModal').modal('toggle');
-                hideSpinner();
-            }
-        });
-    });
     $('#supprimerColonne').on('click', function () {
         showSpinner();
         $.ajax({
