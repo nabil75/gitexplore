@@ -116,7 +116,7 @@
             url: '{% url 'get_list_product' %}',
             method: 'get',
             data: {
-                produit: $('#foodsDataList').val(),
+                mot: $('#foodsDataList').val(),
                 file: $('#file').val()
             },
             success: function (response) {

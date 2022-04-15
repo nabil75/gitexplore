@@ -22,8 +22,13 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('', views.index),
     path('index', views.index, name='index'),
-    path('telecharger_csv', views.telecharger_csv, name='telecharger_csv'),
-    path('telecharger_pdf', views.telecharger_pdf, name='telecharger_pdf'),
+
+    #path('telecharger_csv', views.telecharger_csv, name='telecharger_csv'),
+    path('download_csv', views.download_csv, name='download_csv'),
+
+    #path('telecharger_pdf', views.telecharger_pdf, name='telecharger_pdf'),
+    path('download_pdf', views.download_pdf, name='download_pdf'),
+
     path('preparer', views.preparer, name='preparer'),
     path('explorer', views.explorer, name='explorer'),
     #Ajax

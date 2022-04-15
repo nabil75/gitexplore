@@ -1,21 +1,22 @@
-import os
-import requests
-from django.http import HttpResponse, JsonResponse
+from typing import List, Union
+
+from django.http import HttpResponse, JsonResponse, HttpRequest
 from django.shortcuts import render, redirect
 from django.core.files.storage import FileSystemStorage
 from django.contrib import messages
 import pandas as pd
-import json
-from elasticsearch import Elasticsearch, helpers
-from .utils import get_plot, list_files_dir, cleanfile, recup_mots_cle
+from .utils import list_files_dir, recup_mots_cle
 from pandas_profiling import ProfileReport
-import re
 
 
-def index (request):
+def index(request: HttpRequest) -> HttpResponse:
+    """
+    BLA
+    """
     return render(request, 'index.html')
 
-def telecharger_csv(request):
+
+def download_csv(request: HttpRequest) -> HttpResponse:
     """
     1- upload working file (csv only)
     2- storage of the file in the media directory
@@ -27,22 +28,26 @@ def telecharger_csv(request):
     -------
     message with numbers of rows and columns
     """
-
-    if request.method=='POST':
-        uploaded_file=request.FILES['document']
-        if uploaded_file.name.endswith('.csv'):
-            name = FileSystemStorage().save(uploaded_file.name,uploaded_file)
-            fileUploaded = 'media\\'+name
-            my_file = pd.read_csv(fileUploaded, sep=';', engine='python', encoding='ansi')
-            data = pd.DataFrame(data=my_file, index=None)
-            rows = len(data.axes[0])
-            columns = len(data.axes[1])
-            messages.warning(request, 'Le fichier a été téléchargé avec succès. Il contient ' + str(rows) + ' enregistrement(s) et ' + str(columns) + ' colonnes')
-        else:
-            messages.warning(request, 'Le fichier n\'a pas été téléchargé. Merci de choisir un fichier au format csv')
+    if message := get_csv_message(request):
+        messages.warning(request, message)
     return render(request, 'telecharger_csv.html')
 
-def telecharger_pdf(request):
+
+def get_csv_message(request: HttpRequest) -> Union[str, None]:
+    """
+    BLA
+    """
+    if request.method != 'POST':
+        return None
+    if not (uploaded_file := request.FILES['document']).name.endswith('.csv'):
+        return 'Le fichier n\'a pas été téléchargé. Merci de choisir un fichier au format csv'
+    name = FileSystemStorage().save(uploaded_file.name, uploaded_file)
+    df = pd.read_csv(f'media\\{name}', sep=';', engine='python', encoding='ansi')
+    return f'Le fichier a été téléchargé avec succès. Il contient {df.shape[0]} ' \
+           f'enregistrement(s) et {df.shape[1]} colonnes'
+
+
+def download_pdf(request: HttpRequest) -> HttpResponse:
     """
     1- upload working file (pdf only)
     2- storage of the file in the media directory
@@ -53,27 +58,41 @@ def telecharger_pdf(request):
     -------
     message with numbers of rows and columns
     """
-    if request.method=='POST':
-        uploaded_file=request.FILES['document']
-        if uploaded_file.name.endswith('.pdf'):
-            name = FileSystemStorage().save(uploaded_file.name,uploaded_file)
-            messages.warning(request, 'Le fichier a été téléchargé avec succès.')
-        else:
-            messages.warning(request, 'Le fichier n\'a pas été téléchargé. Merci de choisir un fichier au format pdf')
+    if message := get_message(request, ".pdf"):
+        messages.warning(request, message)
     return render(request, 'telecharger_pdf.html')
 
-def explorer(request):
+
+def get_message(request: HttpRequest, document_type:str) -> Union[str, None]:
+    """
+    BLA
+    """
+    if request.method != 'POST':
+        return None
+    if not (uploaded_file := request.FILES['document']).name.endswith(document_type):
+        return f"Le fichier n\'a pas été téléchargé. Merci de choisir un fichier au format {document_type}"
+
+    FileSystemStorage().save(uploaded_file.name, uploaded_file)
+    return 'Le fichier a été téléchargé avec succès.'
+
+
+def explorer(request: HttpRequest) -> HttpResponse:
     """
     1- display explorer page
     :param request:
     :return:
     """
-    context={}
-    list_files = list_files_dir()
-    context['list_files'] = list_files
-    return render(request, 'explorer.html', context)
+    return render(request, 'explorer.html', {'list_files':  list_files_dir()})
 
-def get_list_mots_cle(request):
+
+def preparer(request: HttpRequest) -> HttpResponse:
+    """
+    BLA
+    """
+    return render(request, 'preparer.html', {'list_files': list_files_dir()})
+
+
+def get_list_mots_cle(request: HttpRequest) -> HttpResponse:
     """
     1- get list of key words from product_name column
     Parameters:
@@ -85,119 +104,107 @@ def get_list_mots_cle(request):
     -------
     message with numbers of rows and columns
     """
-    filename = 'media/'+request.GET.get('file')
-    list_mots_cle = recup_mots_cle(filename)
-    print(list_mots_cle)
-    return HttpResponse(str(list_mots_cle))
+    return resp(recup_mots_cle(f"media/{request.GET.get('file')}"))
 
-def get_list_product(request):
-    produit = request.GET.get('produit')
-    filename = 'media/'+request.GET.get('file')
-    csv_clean_file = pd.read_csv(filename, sep=';', engine='python')
-    produits = []
-    for index, row in csv_clean_file.iterrows():
-        name = row['product_name']
-        if produit in name:
-            produits.append(name)
-    return HttpResponse(str(produits))
 
-def get_info_product(request):
+def get_list_product(request: HttpRequest) -> HttpResponse:
     """
-    Retourner les données relatives au produit choisi, aux produits à score nutritionnel équivalent et à l'ensemble des produits
+    BLA
+    """
+    df = pd.read_csv(f"media/{request.GET.get('file')}", sep=';', engine='python')
+    return resp([name for name in df['product_name'] if request.GET.get('produit') in name])
+
+
+def get_info_product(request: HttpRequest) -> JsonResponse:
+    """
+    Retourner les données relatives au produit choisi, aux produits à score nutritionnel
+    équivalent et à l'ensemble des produits
     1- convertir le fichier CSV en dataframe
     2- supprimer les éléments nutritifs non concernés par le produit choisi
     3- supprimer la dimension count de la fonction describe
     :param request:
     :return: table des valeurs par élément nutritif
     """
-    produit = request.GET.get('produit')
-    filename = 'media/'+request.GET.get('file')
-    csv_file = pd.read_csv(filename, sep=';', decimal='.', engine='python')
-    csv_product = csv_file[csv_file.product_name == produit]
-    csv_clean_file1 = csv_product.drop(columns=['product_name'])
-    csv_clean_file2 = csv_clean_file1.dropna(axis=1, how='all')
-    csv_clean_file3 = csv_clean_file2.transpose()
-    csv_clean_file4 = csv_clean_file3.rename(columns={csv_clean_file3.columns[0]: 'valeur nutritive'})
-    csv_clean_file5 = csv_clean_file4.round(decimals=4)
-    val = csv_clean_file5.loc['nutrition-score-fr_100g']['valeur nutritive']
-    csv_clean_file6 = csv_clean_file5.style.set_properties(**{'text-align': 'right'})
+    df = pd.read_csv(f"media/{request.GET.get('file')}", sep=';', engine='python', encoding='ansi')
+    df_product = clean_product_csv(df, request.GET.get('produit'))
+    products = df_product.style.set_properties(**{'text-align': 'right'})
+    nutritive_elements = [products.index[idx] for idx, _ in enumerate(products.index)]
+    categories = clean_category_csv(df, df_product, nutritive_elements)
+    all_df = clean_all_csv(df, nutritive_elements)
 
-    elements_nutritifs=[]
-    p=0
-    for i in csv_clean_file6.index:
-        elements_nutritifs.append(csv_clean_file6.index[p])
-        p+=1
-
-    csv_categorie = csv_file.loc[(csv_file['nutrition-score-fr_100g'] == val)]
-    csv_clean_file7 = csv_categorie.drop(columns=['product_name'])
-    csv_clean_file8 = csv_clean_file7.dropna(axis=1, how='all')
-    csv_clean_file8 = csv_clean_file8.filter(elements_nutritifs, axis=1)
-    csv_clean_file9 = csv_clean_file8.describe().transpose()
-    csv_clean_file10 = csv_clean_file9.rename(columns={csv_clean_file9.columns[1]: 'valeur nutritive'})
-    csv_clean_file11 = csv_clean_file10.filter(['valeur nutritive'], axis=1)
-    csv_clean_file12 = csv_clean_file11.style.set_properties(**{'text-align': 'right'})
-
-    csv_clean_file13 = csv_file.drop(columns=['product_name'])
-    csv_clean_file14 = csv_clean_file13.dropna(axis=1, how='all')
-    csv_clean_file14 = csv_clean_file14.filter(elements_nutritifs, axis=1)
-    csv_clean_file15 = csv_clean_file14.describe().transpose()
-    csv_clean_file16 = csv_clean_file15.rename(columns={csv_clean_file9.columns[1]: 'valeur nutritive'})
-    csv_clean_file17 = csv_clean_file16.filter(['valeur nutritive'], axis=1)
-    csv_clean_file18 = csv_clean_file17.style.set_properties(**{'text-align': 'right'})
-
-    reponses={}
-    reponses['produit'] = csv_clean_file6.to_html()
-    reponses['categorie'] = csv_clean_file12.to_html()
-    reponses['tous'] = csv_clean_file18.to_html()
+    reponses = {'produit': products.to_html(),
+                'categorie': categories.style.set_properties(**{'text-align': 'right'}).to_html(),
+                'tous':  all_df.style.set_properties(**{'text-align': 'right'}).to_html()}
     return JsonResponse(reponses)
 
-def index_json():
-    res = requests.get('http://localhost:9200')
-    es = Elasticsearch([{'host': 'localhost', 'port': '9200'}])
-    f = open('media/foodsClean.json')
-    docket_content = f.read()
-    # Send the data into es
-    es.index(index='foods', ignore=400, doc_type='food', body=json.loads(docket_content))
 
-def preparer(request):
-    context={}
-    list_files = list_files_dir()
-    context['list_files'] = list_files
-    return render(request, 'preparer.html', context)
+def clean_product_csv(df: pd.DataFrame, produit: str) -> pd.DataFrame:
+    """
+    BLA
+    """
 
-def get_list_colonnes(request):
-    file = request.GET.get('file')
-    filename = 'media/'+file
-    csv_file = pd.read_csv(filename, sep=';', engine='python', encoding='ansi')
-    #df=csv_file.select_dtypes(include='number')
-    colonnes = []
-    for col_name in csv_file.columns:
-        colonnes.append(col_name)
-    return HttpResponse(str(colonnes))
+    cleaned_df = df[df.product_name == produit].drop(columns=['product_name'])\
+        .dropna(axis=1, how='all').transpose()
+    return cleaned_df.rename(columns={cleaned_df.columns[0]: 'valeur nutritive'}).round(decimals=4)
 
-def get_overview(request):
-    context = {}
-    file = request.GET.get('file')
+
+def clean_category_csv(df: pd.DataFrame,
+                       df_product: pd.DataFrame,
+                       nutritive_elements: List[str]
+                       ) -> pd.DataFrame:
+    """
+    BLA
+    """
+    val = df_product.loc['nutrition-score-fr_100g']['valeur nutritive']
+    clean_df = df.loc[(df['nutrition-score-fr_100g'] == val)].drop(columns=['product_name'])\
+        .dropna(axis=1, how='all').filter(nutritive_elements, axis=1).describe().transpose()
+    return clean_df.rename(columns={clean_df.columns[1]: 'valeur nutritive'})\
+        .filter(['valeur nutritive'], axis=1)
+
+
+def clean_all_csv(df: pd.DataFrame, nutritive_elements: List[str]) -> pd.DataFrame:
+    """
+    BLA
+    """
+    clean_df = df.drop(columns=['product_name']).dropna(axis=1, how='all')\
+        .filter(nutritive_elements, axis=1).describe().transpose()
+    return clean_df.rename(columns={clean_df.columns[1]: 'valeur nutritive'})\
+        .filter(['valeur nutritive'], axis=1)
+
+
+def get_list_colonnes(request: HttpRequest):
+    """
+    BLA
+    """
+    df = pd.read_csv(f"media/{request.GET.get('file')}", sep=';', engine='python', encoding='ansi')
+    return resp(list(df.columns))
+
+
+def get_overview(request: HttpRequest):
+    """
+    BLA
+    """
     colonne = request.GET.get('colonne')
-    filename = 'media/' + file
+    filename = f"media/{request.GET.get('file')}"
     csv_file = pd.read_csv(filename, sep=';', engine='python', encoding='ansi')
     df = pd.DataFrame({'valeur': csv_file[colonne]})
-
     profile = ProfileReport(df, title=colonne, html={'style': {'full_width': True}})
-    rapport = profile.to_html()
-    context['overview']=rapport
-    return JsonResponse(context)
+    return JsonResponse({'overview': profile.to_html()})
 
-def suppr_colonne(request):
-    context = {}
-    file = request.GET.get('file')
-    colonne = request.GET.get('colonne')
-    filename = 'media/' + file
+
+def suppr_colonne(request: HttpRequest):
+    """
+    BLA
+    """
+    filename = f"media/{request.GET.get('file')}"
     csv_file = pd.read_csv(filename, sep=';', engine='python', encoding='ansi')
-    csv_file.pop(colonne)
-    os.remove(filename)
+    csv_file.pop(request.GET.get('colonne'))
     csv_file.to_csv(filename, sep=';', encoding='ansi', index=False)
-    colonnes = []
-    for col_name in csv_file.columns:
-        colonnes.append(col_name)
-    return HttpResponse(str(colonnes))
+    return resp(csv_file.columns)
+
+
+def resp(sequence: List[str]):
+    """
+    BLA
+    """
+    return HttpResponse(str(sequence))
